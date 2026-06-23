@@ -8,9 +8,13 @@ from app.database import init_db
 async def lifespan(app: FastAPI):
     # this will initialize the db before the server starts
     init_db()
-    from app.services import EmbeddingModelLoader
+    from app.services import EmbeddingModelLoader, VectorStoreService
 
     EmbeddingModelLoader()  # doing this so that we load the model even before accepting traffic
+
+    v_store = VectorStoreService()
+    v_store.ensure_collection_exists()
+
     yield
 
 

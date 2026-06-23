@@ -3,6 +3,8 @@ from pypdf import PdfReader
 import nltk
 from nltk.tokenize import sent_tokenize
 from sentence_transformers import SentenceTransformer
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct
 
 try:
     nltk.data.find("tokenizers/punkt_tab")
@@ -151,4 +153,57 @@ def chunk_text(text: str, strategy: str, **kwargs) -> list[str]:
     else:
         raise ValueError(
             f"Unkown chunking strategy '{strategy}'. Use 'fixed_size' or 'semantic' chunking strategy."
+        )
+
+
+class VectorStoreService:
+    _instance = None
+    COLLECTION_NAME = "document_chunks"
+
+    def __new__(cls):
+        if cls._instance is None:
+            print(f"Connecting with the Qdrant storage")
+            cls._instance = super().__new__(cls)
+
+            os.makedirs("./storage/qdrant_data", exist_ok=True)
+
+            cls._instance.client = QdrantClient(path="./storage/qdrant_data")  # type: ignore
+
+        return cls._instance
+
+    def ensure_collection_exists(self):
+        if self.client.collection_exists(collection_name=self.COLLECTION_NAME):  # type: ignore
+            return
+
+        print("Creating qdrant collection")
+        self.client.create_collection(  # type: ignore
+            collection_name=self.COLLECTION_NAME,
+            vectors_config=VectorParams(size=384, distance=Distance.COSINE),
+        )
+
+    def upsert_vectors(
+        self, vector_ids: list[str], embeddings: list[list[float]], payloads: list[dict]
+    ):
+        if not (len(vector_ids) == len(embeddings) == len(payloads)):
+            raise ValueError(
+                f"Length mismatch error: vector_ids {len(vector_ids)}, embeddings ({len(embeddings)}), and payloads ({len(payloads)}) must align perfectly"
+            )
+        if not vector_ids:
+            return
+
+        points = []
+        for v_id, emb, pay in zip(vector_ids, embeddings, payloads):
+            points.append(PointStruct(id=v_id, vector=emb, payload=pay))
+
+        self.client.upsert(  # type: ignore
+            collection_name=self.COLLECTION_NAME, wait=True, points=points
+        )
+
+    def delete_vectors(self, vector_ids: list[str]):
+        """remove an exact list of target vector"""
+        if not vector_ids:
+            return
+
+        self.client.delete(  # type: ignore
+            collection_name=self.COLLECTION_NAME, points_selector=vector_ids
         )
