@@ -1,5 +1,12 @@
 import os
 from pypdf import PdfReader
+import nltk
+from nltk.tokenize import sent_tokenize
+
+try:
+    nltk.data.find("tokenizers/punkt_tab")
+except LookupError:
+    nltk.download("punkt_tab", quiet=True)
 
 
 def extract_text(file_path: str):
@@ -43,4 +50,71 @@ def extract_text(file_path: str):
     else:
         raise ValueError(
             f"Unsupported file extension '{extension}'. Only pdf and txt files are supported."
+        )
+
+
+def chunk_test_fixed_size(
+    text: str, chunk_size: int = 500, overlap: int = 50
+) -> list[str]:
+    """Split text into fixed size chunks with overlaping and return a list of the chunks"""
+
+    if chunk_size <= 0:
+        raise ValueError("chunksize must be positve integer")
+    if overlap >= chunk_size:
+        raise ValueError("overlap must be smaller then chunk_size")
+
+    chunks = []
+    start = 0
+    text_length = len(text)
+
+    # checking for base condition
+    if (
+        text_length <= chunk_size
+    ):  # the total text in the file is less then the chunks size
+        if text_length > 0:  # and that it is not emtpy
+            chunks.append(text)  # just crate a chunk of the entire text
+        return chunks
+
+    while start < text_length:
+        end = start + chunk_size
+        chunk = text[start:end]
+
+        if chunk:
+            chunks.append(chunk)
+
+        # Move forward
+        start += chunk_size - overlap
+
+        if (start >= text_length) or (end >= text_length):
+            break
+
+    return chunks
+
+
+def chunk_text_sentence(text: str, sentences_per_chunk: int = 3) -> list[str]:
+    """Splits text on sentence boundary and groups a fixed number of sentence together to chunk them"""
+
+    if sentences_per_chunk <= 0:
+        raise ValueError("sentences_per_chunk must be positive integer")
+
+    sentences = sent_tokenize(text)
+    sentences = [s.strip() for s in sentences if s.strip()]
+
+    chunks = []
+    for i in range(0, len(sentences), sentences_per_chunk):
+        group = sentences[i : i + sentences_per_chunk]
+        chunks.append(" ".join(group))
+
+    return chunks
+
+
+def chunk_text(text: str, strategy: str, **kwargs) -> list[str]:
+    """router function to route to the choosen chunking strategy"""
+    if strategy == "fixed_size":
+        return chunk_test_fixed_size(text, **kwargs)
+    elif strategy == "semantic":
+        return chunk_text_sentence(text, **kwargs)
+    else:
+        raise ValueError(
+            f"Unkown chunking strategy '{strategy}'. Use 'fixed_size' or 'semantic' chunking strategy."
         )
