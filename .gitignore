@@ -1,0 +1,19 @@
+# Virtual Environment
+.venv/
+env/
+venv/
+
+# Environment Variables & Secrets
+.env
+
+# Databases
+*.db
+qdrant_data/
+
+# Python caching
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
