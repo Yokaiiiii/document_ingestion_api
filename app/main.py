@@ -8,6 +8,9 @@ from app.database import init_db
 async def lifespan(app: FastAPI):
     # this will initialize the db before the server starts
     init_db()
+    from app.services import EmbeddingModelLoader
+
+    EmbeddingModelLoader()  # doing this so that we load the model even before accepting traffic
     yield
 
 

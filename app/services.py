@@ -2,11 +2,45 @@ import os
 from pypdf import PdfReader
 import nltk
 from nltk.tokenize import sent_tokenize
+from sentence_transformers import SentenceTransformer
 
 try:
     nltk.data.find("tokenizers/punkt_tab")
 except LookupError:
     nltk.download("punkt_tab", quiet=True)
+
+
+class EmbeddingModelLoader:
+    _instance = None
+
+    # this will make sure even if many objects are created, the model is loaded only once
+    def __new__(cls):
+        if cls._instance is None:
+            print("Loading SentenceTransformer ('all-MiniLM-L6-v2) into memory")
+            cls._instance = super().__new__(cls)
+            # load the cache the model
+            cls._instance.model = SentenceTransformer("all-MiniLM-L6-v2")
+        return cls._instance
+
+    @property
+    def model(self) -> SentenceTransformer:
+        return self._model
+
+    @model.setter
+    def model(self, transformer_model: SentenceTransformer):
+        self._model = transformer_model
+
+
+def generate_embeddings(chunks: list[str]) -> list[list[float]]:
+    """Generate the embeddings of the chunks passed, created 384 dimensional dense vector"""
+
+    if not chunks:
+        return []
+
+    loader = EmbeddingModelLoader()
+    embeddings = loader.model.encode(chunks, convert_to_numpy=True)
+
+    return embeddings.tolist()
 
 
 def extract_text(file_path: str):
