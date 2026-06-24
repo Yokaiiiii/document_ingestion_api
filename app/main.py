@@ -204,3 +204,42 @@ def get_document_details(document_id: str, db: Session = Depends(get_db)):
         )
 
     return document
+
+
+@app.delete("/api/v1/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document(document_id: str, db: Session = Depends(get_db)):
+    """Synchronously deleting the targeted document from both sql and qdrant"""
+    document = db.query(DocumentModel).filter(DocumentModel.id == document_id).first()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with document_id {document_id} not found in the database.",
+        )
+
+    vector_ids_to_delete = [
+        chunk.vector_id for chunk in document.chunks if chunk.vector_id
+    ]
+
+    file_path = os.path.join(settings.UPLOAD_DIR, f"{document_id}.{document.file_type}")
+
+    if vector_ids_to_delete:
+        try:
+            v_store = VectorStoreService()
+            v_store.delete_vectors(vector_ids=vector_ids_to_delete)
+        except Exception as e:
+            print(f"Error while deleting the vector from qdrant: {str(e)}")
+
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except Exception as e:
+            print(
+                f"Error while trying to remove the file path from directory: {str(e)}"
+            )
+
+    # removing the entry from sql database too
+    db.delete(document)
+    db.commit()
+
+    return
