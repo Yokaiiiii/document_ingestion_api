@@ -4,6 +4,14 @@ from typing import Optional, List
 from datetime import date, time
 
 
+class BookingExtraction(BaseModel):
+    name: str
+    email: str
+    date: date
+    time: time
+    extracted: bool
+
+
 class ChunkResponse(BaseModel):
     id: str
     document_id: str

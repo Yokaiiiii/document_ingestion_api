@@ -207,3 +207,14 @@ class VectorStoreService:
         self.client.delete(  # type: ignore
             collection_name=self.COLLECTION_NAME, points_selector=vector_ids
         )
+
+    def search(self, query_vector: list[float], top_k: int = 5):
+        if hasattr(self.client, "query_points"):  # type: ignore
+            response = self.client.query_points(  # type: ignore
+                collection_name=self.COLLECTION_NAME,
+                query=query_vector,
+                limit=top_k,
+                with_payload=True,
+            )
+            # Modern API wraps results inside a .points attribute
+            return response.points

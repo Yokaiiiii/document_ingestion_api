@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     QDRANT_PATH: str
     REDIS_URL: str
+    OLLAMA_API_URL: str
+    OLLAMA_MODEL_NAME: str
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 
