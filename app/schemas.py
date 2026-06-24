@@ -7,8 +7,8 @@ from datetime import date, time
 class BookingExtraction(BaseModel):
     name: str
     email: str
-    date: date
-    time: time
+    date: str
+    time: str
     extracted: bool
 
 
@@ -54,8 +54,8 @@ class BookingResponse(BaseModel):
     conversation_id: str
     name: str
     email: str
-    date: date
-    time: time
+    date: str
+    time: str
     status: str
     created_at: datetime
 

@@ -18,6 +18,7 @@ from sqlalchemy.orm import (
     Session,
 )
 from app.config import settings
+from app.services import nepal_time
 
 ## setting up engine and the session factory
 engine = create_engine(
@@ -38,7 +39,7 @@ class ConversationModel(Base):
     __tablename__ = "conversations"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=nepal_time)
 
     messages: Mapped[List["ChatMessageModel"]] = relationship(
         "ChatMessageModel", back_populates="conversation", cascade="all, delete-orphan"
@@ -60,7 +61,7 @@ class ChatMessageModel(Base):
     retrieved_chunk_ids: Mapped[List[str]] = mapped_column(
         JSON, default=list, nullable=False
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=nepal_time)
 
     conversation: Mapped["ConversationModel"] = relationship(
         "ConversationModel", back_populates="messages"
@@ -81,7 +82,7 @@ class BookingModel(Base):
     status: Mapped[str] = mapped_column(
         String, default="pending"
     )  # e.g., pending, confirmed
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=nepal_time)
 
     conversation: Mapped["ConversationModel"] = relationship(
         "ConversationModel", back_populates="bookings"
@@ -100,7 +101,7 @@ class DocumentModel(Base):
     )  # e.g., pending, processing, completed, failed
     error_message: Mapped[str | None] = mapped_column(String, nullable=True)
     chunk_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=nepal_time)
 
     # now since we ahve one to many relationship to chunks
     chunks: Mapped[List["ChunkModel"]] = relationship(

@@ -1,5 +1,14 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, status
+from fastapi import (
+    FastAPI,
+    UploadFile,
+    File,
+    Form,
+    HTTPException,
+    Depends,
+    status,
+    Response,
+)
 from app.config import settings
 from app.database import init_db, get_db, DocumentModel, ChunkModel
 from sqlalchemy.orm import Session
@@ -13,8 +22,14 @@ from app.services import (
     chunk_text,
     EmbeddingModelLoader,
 )
-from app.schemas import DocumentResponse, DocumentListResponse
+from app.schemas import (
+    DocumentResponse,
+    DocumentListResponse,
+    ChatResponse,
+    ChatRequest,
+)
 from typing import List
+from app.chat import ChatManager
 
 
 @asynccontextmanager
@@ -119,8 +134,9 @@ async def upload_document(
                 "document_id": document_id,
                 "chunk_index": idx,
                 "filename": filename,
+                "content": text_content,
             }
-            for idx in range(len(chunks))
+            for idx, text_content in enumerate(chunks)
         ]
 
         v_store.upsert_vectors(
@@ -243,3 +259,36 @@ def delete_document(document_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return
+
+
+@app.post("/api/v1/chat", response_model=ChatResponse)
+def chat_endpoint(
+    payload: ChatRequest, response: Response, db: Session = Depends(get_db)
+):
+    """handles the multi turn conversation interaction"""
+
+    if not payload.message.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message content cannot be empty.",
+        )
+    try:
+        manager = ChatManager(db=db)
+        result = manager.process_message(
+            user_message=payload.message, conversation_id=payload.conversation_id
+        )
+
+        if result.get("booking") is not None:
+            response.status_code = status.HTTP_201_CREATED
+
+        return result
+
+    except ValueError as ve:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Value error : {str(ve)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexcpeted error occured during chat lifecycle processing: {str(e)}",
+        )

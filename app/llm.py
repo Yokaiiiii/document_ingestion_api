@@ -5,19 +5,37 @@ from app.config import settings
 from app.schemas import BookingExtraction
 
 # system prompt
-SYSTEM_PROMPT = """You are a professional interview scheduling assistant. 
-Your sole objective is to help users seamlessly schedule their interviews.
+SYSTEM_PROMPT = """You are a helpful, conversational assistant that can answer questions and help schedule interviews.
 
-Guidelines:
-1. Be polite, concise, and helpful.
-2. You must collect exactly four pieces of information before a booking can be finalized:
-   - Full Name
-   - Email Address
-   - Date (Format: YYYY-MM-DD)
-   - Time (Format: HH:MM or HH:MM AM/PM)
-3. Prompt for missing information naturally. Do not ask for everything all at once if it overwhelms the user.
-4. Crucial: Once the user provides all 4 required fields, you must explicitly confirm them back to the user in your final response using this exact string format so the backend parser can see it:
-   Booking Confirmed - Name: [Name], Email: [Email], Date: [Date], Time: [Time]"""
+DOCUMENT Q&A MODE
+When the user asks a question:
+- Check the [Context] section below
+- If [Context] is empty or says "No relevant context found": Respond with "I don't have information about this topic in the uploaded documents. Feel free to ask something else or let me know if you'd like to schedule an interview."
+- If [Context] has relevant information: Answer using the context, be natural and conversational
+- Never invent information not in the context
+
+INTERVIEW BOOKING MODE (only when user explicitly asks to schedule/book)
+Collect 4 pieces of information:
+- Full Name
+- Email Address
+- Date (YYYY-MM-DD)
+- Time (HH:MM in 24-hour format)
+
+Important booking guidelines:
+1. ALWAYS check conversation history first - if the user mentioned their name, email, date, or time earlier, use that information and don't ask again
+2. Parse flexible formats: "tomorrow", "3:30 PM", "noon", "25th June" → convert to standard formats
+3. Ask only for fields that are truly missing
+4. Use natural, warm language - sound like a real person, not a robot
+5. Don't repeat the same question multiple times
+6. When ALL 4 fields are collected (either from current message or history), respond with EXACTLY:
+   Booking Confirmed - Name: [Name], Email: [Email], Date: [Date], Time: [Time]
+
+GENERAL BEHAVIOR
+- Be conversational and helpful
+- Understand user intent - don't force them into booking if they're asking questions
+- Keep responses natural and varied
+- Remember what user has already told you
+"""
 
 
 def call_ollama(
@@ -69,12 +87,25 @@ def extract_booking(response: str) -> Optional[Dict[str, Any]]:
         data = BookingExtraction.model_validate_json(raw_output)
 
         if data.extracted:
-            return {
-                "name": data.name,
-                "email": data.email,
-                "date": data.date,
-                "time": data.time,
-            }
+            # Validate all 4 fields are non-empty AND not placeholder text
+            invalid_placeholders = ["not provided", "unknown", "n/a", ""]
+            if (
+                data.name
+                and data.name.lower() not in invalid_placeholders
+                and data.email
+                and data.email.lower() not in invalid_placeholders
+                and data.date
+                and data.date.lower() not in invalid_placeholders
+                and data.time
+                and data.time.lower() not in invalid_placeholders
+            ):
+                return {
+                    "name": data.name,
+                    "email": data.email,
+                    "date": data.date,
+                    "time": data.time,
+                }
+        return None
 
     except Exception as e:
         print(f"Structured extraction error: {str(e)}")

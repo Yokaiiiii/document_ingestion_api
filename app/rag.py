@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 from app.services import EmbeddingModelLoader, VectorStoreService
 
 
-def retrieve_chunks(query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+def retrieve_chunks(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
     if not query or not query.strip():  # emtpy that is
         return []
     try:

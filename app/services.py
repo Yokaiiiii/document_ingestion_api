@@ -10,6 +10,12 @@ try:
     nltk.data.find("tokenizers/punkt_tab")
 except LookupError:
     nltk.download("punkt_tab", quiet=True)
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+
+def nepal_time():
+    return datetime.now(ZoneInfo("Asia/Kathmandu"))
 
 
 class EmbeddingModelLoader:
