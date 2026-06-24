@@ -21,6 +21,20 @@ class DocumentResponse(BaseModel):
     status: str
     error_message: Optional[str] = None
     created_at: datetime
+    chunk_count: int
     chunks: List[ChunkResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentListResponse(BaseModel):
+    id: str
+    filename: str
+    file_type: str
+    chunking_strategy: str
+    status: str
+    error_message: Optional[str] = None
+    created_at: datetime
+    chunk_count: int
 
     model_config = ConfigDict(from_attributes=True)

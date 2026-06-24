@@ -13,7 +13,8 @@ from app.services import (
     chunk_text,
     EmbeddingModelLoader,
 )
-from app.schemas import DocumentResponse
+from app.schemas import DocumentResponse, DocumentListResponse
+from typing import List
 
 
 @asynccontextmanager
@@ -91,6 +92,7 @@ async def upload_document(
         file_type=extension.replace(".", ""),
         chunking_strategy=chunking_strategy,
         status="processing",
+        chunk_count=0,
     )
 
     db.add(db_document)
@@ -132,12 +134,12 @@ async def upload_document(
                 chunk_index=idx,
                 content=text_content,
                 vector_id=vector_ids_allocated[idx],
-                chunk_count=len(chunks),
             )
             db.add(db_chunks)
 
         # now again shifting the workflow to done
         db_document.status = "completed"
+        db_document.chunk_count = len(chunks)
         db.commit()
         db.refresh(db_document)
 
@@ -172,3 +174,33 @@ async def upload_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal pipeline error: {str(pipeline_error)}",
         )
+
+
+@app.get(
+    "/api/v1/documents",
+    response_model=List[DocumentListResponse],
+    status_code=status.HTTP_200_OK,
+)
+def list_documents(db: Session = Depends(get_db)):
+    """return a summary of list of all tracked document metadata records"""
+    documents = db.query(DocumentModel).order_by(DocumentModel.created_at.desc()).all()
+
+    return documents
+
+
+@app.get(
+    "/api/v1/documents/{document_id}",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_200_OK,
+)
+def get_document_details(document_id: str, db: Session = Depends(get_db)):
+    """Fetching the document indicated by the document_id"""
+    document = db.query(DocumentModel).filter(DocumentModel.id == document_id).first()
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with document_id {document_id} not found in the database.",
+        )
+
+    return document

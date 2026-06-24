@@ -44,6 +44,7 @@ class DocumentModel(Base):
         String, default="pending"
     )  # e.g., pending, processing, completed, failed
     error_message: Mapped[str | None] = mapped_column(String, nullable=True)
+    chunk_count: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # now since we ahve one to many relationship to chunks
@@ -67,7 +68,6 @@ class ChunkModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now()
     )
-    chunk_count: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Relationship back to Document
     document: Mapped["DocumentModel"] = relationship(
