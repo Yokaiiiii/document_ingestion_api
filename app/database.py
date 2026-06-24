@@ -7,6 +7,7 @@ from sqlalchemy import (
     Text,
     DateTime,
     Integer,
+    JSON,
 )
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -31,6 +32,60 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Base(DeclarativeBase):
     pass
+
+
+class ConversationModel(Base):
+    __tablename__ = "conversations"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    messages: Mapped[List["ChatMessageModel"]] = relationship(
+        "ChatMessageModel", back_populates="conversation", cascade="all, delete-orphan"
+    )
+    bookings: Mapped[List["BookingModel"]] = relationship(
+        "BookingModel", back_populates="conversation", cascade="all, delete-orphan"
+    )
+
+
+class ChatMessageModel(Base):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    conversation_id: Mapped[str] = mapped_column(
+        String, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String, nullable=False)  # "user" or "assistant"
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    retrieved_chunk_ids: Mapped[List[str]] = mapped_column(
+        JSON, default=list, nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    conversation: Mapped["ConversationModel"] = relationship(
+        "ConversationModel", back_populates="messages"
+    )
+
+
+class BookingModel(Base):
+    __tablename__ = "bookings"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    conversation_id: Mapped[str] = mapped_column(
+        String, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+    date: Mapped[str] = mapped_column(String, nullable=False)
+    time: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String, default="pending"
+    )  # e.g., pending, confirmed
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    conversation: Mapped["ConversationModel"] = relationship(
+        "ConversationModel", back_populates="bookings"
+    )
 
 
 class DocumentModel(Base):
