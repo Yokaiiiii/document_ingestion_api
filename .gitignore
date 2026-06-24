@@ -9,6 +9,7 @@ venv/
 # Databases
 *.db
 qdrant_data/
+storage/
 
 # Python caching
 __pycache__/
@@ -20,3 +21,5 @@ __pycache__/
 
 # Testing files
 test*.py
+test*.txt
+test*.pdf
